@@ -1,15 +1,42 @@
 {
-    "name": "Voyadores Editor",
-    "short_name": "Voyadores Editor",
-    "start_url": "/",
-    "display": "standalone",
-    "background_color": "#ffffff",
-    "theme_color": "#f7921e",
-    "icons": [
-      {
-        "src": "/assets/icon.png",
-        "sizes": "512x512",
-        "type": "image/png"
-      }
-    ]
-  }
+  "name": "Voyadores Editor",
+  "short_name": "Voyadores Editor",
+  "description": "Voyadores Editor for sales and marketing team.",
+  "start_url": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "display": "fullscreen",
+  "display_override": [
+    "window-controls-overlay"
+  ],
+  "orientation": "any",
+  "handle_links": "preferred",
+  "background_color": "#ffffff",
+  "theme_color": "#f7921e",
+  "icons": [
+    {
+      "src": "assets/images/manifest-icon-192.maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/images/manifest-icon-192.maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/images/manifest-icon-512.maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/images/manifest-icon-512.maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
