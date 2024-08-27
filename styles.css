@@ -1,19 +1,33 @@
+html,
 body {
-    font-family: Arial, sans-serif;
+    height: 100vh;
     margin: 0;
     padding: 0;
-  }
-  
-  #editor {
-    border: 1px solid #ccc;
-    height: 100vh;
-  }
-  
-  .actions {
-    margin-top: 20px;
-    text-align: right;
-  }
-  
-  .actions button {
-    margin-left: 10px;
-  }
+    overflow: hidden;
+    font-family: 'Urbanist', sans-serif;
+}
+
+.document-thumbnail,
+.img-thumbnail {
+    width: 100%;
+    height: 130px !important;
+    object-fit: cover;
+    margin-bottom: 10px;
+}
+
+.document-title {
+    font-size: 14px;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.document-item {
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+.document-item:hover {
+    opacity: 0.8;
+}

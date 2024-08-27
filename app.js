@@ -3,7 +3,7 @@ let editor = null;
 let autosaveInterval = null;
 let savedDocs = JSON.parse(localStorage.getItem("savedDocs")) || [];
 const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-
+initEditor();
 function showInitialDialog() {
 	const modal = new bootstrap.Modal(document.getElementById("initialDialog"));
 	updateRecentDocumentsGrid();
