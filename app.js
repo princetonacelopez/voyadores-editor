@@ -8,23 +8,24 @@ const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
 // Initialize IndexedDB
 async function initDB() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, 1);
-        request.onerror = (event) => reject("IndexedDB error: " + event.target.error);
-        request.onsuccess = (event) => {
-            db = event.target.result;
-            resolve(db);
-        };
-        request.onupgradeneeded = (event) => {
-            db = event.target.result;
-            db.createObjectStore(STORE_NAME, { keyPath: "slug" });
-        };
-    });
+	return new Promise((resolve, reject) => {
+		const request = indexedDB.open(DB_NAME, 1);
+		request.onerror = (event) =>
+			reject("IndexedDB error: " + event.target.error);
+		request.onsuccess = (event) => {
+			db = event.target.result;
+			resolve(db);
+		};
+		request.onupgradeneeded = (event) => {
+			db = event.target.result;
+			db.createObjectStore(STORE_NAME, { keyPath: "slug" });
+		};
+	});
 }
 
 // Load documents from IndexedDB
 async function loadDocuments() {
-	const docKeys = JSON.parse(localStorage.getItem('documentKeys') || '[]');
+	const docKeys = JSON.parse(localStorage.getItem("documentKeys") || "[]");
 	const docs = [];
 
 	for (const key of docKeys) {
@@ -43,50 +44,54 @@ async function loadDocuments() {
 
 // Save document to IndexedDB
 async function saveDocumentToDB(doc) {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([STORE_NAME], "readwrite");
-        const objectStore = transaction.objectStore(STORE_NAME);
-        const request = objectStore.put(doc);
+	return new Promise((resolve, reject) => {
+		const transaction = db.transaction([STORE_NAME], "readwrite");
+		const objectStore = transaction.objectStore(STORE_NAME);
+		const request = objectStore.put(doc);
 		// Update localStorage with the document key
-		let docKeys = JSON.parse(localStorage.getItem('documentKeys') || '[]');
+		let docKeys = JSON.parse(localStorage.getItem("documentKeys") || "[]");
 		if (!docKeys.includes(doc.slug)) {
 			docKeys.push(doc.slug);
-			localStorage.setItem('documentKeys', JSON.stringify(docKeys));
+			localStorage.setItem("documentKeys", JSON.stringify(docKeys));
 		}
-        request.onerror = (event) => reject("Save error: " + event.target.error);
-        request.onsuccess = (event) => resolve(event.target.result);
-    });
+		request.onerror = (event) => reject("Save error: " + event.target.error);
+		request.onsuccess = (event) => resolve(event.target.result);
+	});
 }
 
 async function showInitialDialog() {
-    try {
-        const savedDocs = await loadDocuments();
-        updateRecentDocumentsGrid(savedDocs);
-        const modal = new bootstrap.Modal(document.getElementById("initialDialog"));
-        modal.show();
-    } catch (error) {
-        console.error("Error loading documents:", error);
-    }
+	try {
+		const savedDocs = await loadDocuments();
+		updateRecentDocumentsGrid(savedDocs);
+		const modal = new bootstrap.Modal(document.getElementById("initialDialog"));
+		modal.show();
+	} catch (error) {
+		console.error("Error loading documents:", error);
+	}
 }
 
 function updateRecentDocumentsGrid(savedDocs) {
-    const grid = document.getElementById("recentDocumentsGrid");
-    grid.innerHTML = "";
-    if (savedDocs && savedDocs.length > 0) {
-        savedDocs.forEach((doc) => {
-            const item = document.createElement("div");
-            item.className = "document-item col-6 col-md-4";
-            item.innerHTML = `
-                <img src="${doc.thumbnailBase64}" alt="${doc.title}" class="document-thumbnail img-thumbnail">
+	const grid = document.getElementById("recentDocumentsGrid");
+	grid.innerHTML = "";
+	if (savedDocs && savedDocs.length > 0) {
+		savedDocs.forEach((doc) => {
+			const item = document.createElement("div");
+			item.className = "document-item col-6 col-md-4";
+			item.innerHTML = `
+                <img src="${doc.thumbnailBase64}" alt="${
+				doc.title
+			}" class="document-thumbnail img-thumbnail">
                 <p class="fw-bold mb-0">${doc.title}</p>
-                <p class="date-modified small mb-0">${formatRelativeTime(doc.dateModified)}</p>
+                <p class="date-modified small mb-0">${formatRelativeTime(
+									doc.dateModified
+								)}</p>
             `;
-            item.addEventListener("click", () => loadDocument(doc));
-            grid.appendChild(item);
-        });
-    } else {
-        grid.innerHTML = `<div class="col-6 col-md-4 card document-thumbnail bg-secondary-subtle px-0"><p class="m-auto">No recent documents found.</p></div>`;
-    }
+			item.addEventListener("click", () => loadDocument(doc));
+			grid.appendChild(item);
+		});
+	} else {
+		grid.innerHTML = `<div class="col-6 col-md-4 card document-thumbnail bg-secondary-subtle px-0"><p class="m-auto">No recent documents found.</p></div>`;
+	}
 }
 
 function formatRelativeTime(dateString) {
@@ -228,35 +233,35 @@ function exportToJson() {
 }
 
 function importFromJson() {
-	const fileInput = document.getElementById('jsonFileInput');
+	const fileInput = document.getElementById("jsonFileInput");
 	fileInput.click();
 
-	fileInput.onchange = function(event) {
+	fileInput.onchange = function (event) {
 		const file = event.target.files[0];
 		if (file) {
 			const reader = new FileReader();
-			reader.onload = function(e) {
+			reader.onload = function (e) {
 				try {
 					const jsonContent = JSON.parse(e.target.result);
 					if (jsonContent.entries && jsonContent.entries.length > 0) {
 						const importedDoc = jsonContent.entries[0];
 						currentDoc = {
 							slug: importedDoc.slug || generateSlug(),
-							type: importedDoc.type || 'Imported',
-							title: importedDoc.title || 'Imported Document',
-							banner: importedDoc.banner || '',
-							content: importedDoc.content || '',
-							dateModified: new Date().toISOString()
+							type: importedDoc.type || "Imported",
+							title: importedDoc.title || "Imported Document",
+							banner: importedDoc.banner || "",
+							content: importedDoc.content || "",
+							dateModified: new Date().toISOString(),
 						};
 						editor.setContent(currentDoc.content);
 						saveDocumentToDB(currentDoc);
-						alert('Document imported successfully!');
+						alert("Document imported successfully!");
 					} else {
-						throw new Error('Invalid JSON structure');
+						throw new Error("Invalid JSON structure");
 					}
 				} catch (error) {
-					console.error('Error parsing JSON:', error);
-					alert('Error importing JSON. Please check the file format.');
+					console.error("Error parsing JSON:", error);
+					alert("Error importing JSON. Please check the file format.");
 				}
 			};
 			reader.readAsText(file);
@@ -265,7 +270,7 @@ function importFromJson() {
 }
 
 function generateSlug() {
-	return 'doc-' + Math.random().toString(36).substr(2, 9);
+	return "doc-" + Math.random().toString(36).substr(2, 9);
 }
 
 document.getElementById("newDocBtn").addEventListener("click", () => {
@@ -277,14 +282,87 @@ document
 	.getElementById("newDocForm")
 	.addEventListener("submit", createNewDocument);
 
+function showEditDocInfoModal() {
+	if (!currentDoc) {
+		alert("No document is currently open.");
+		return;
+	}
+
+	document.getElementById("editDocSlug").value = currentDoc.slug;
+	document.getElementById("editDocTitle").value = currentDoc.title;
+	document.getElementById("editDocType").value = currentDoc.type;
+
+	const currentBanner = document.getElementById("currentBanner");
+	if (currentDoc.banner) {
+		currentBanner.src = currentDoc.banner;
+		currentBanner.style.display = "block";
+	} else {
+		currentBanner.style.display = "none";
+	}
+
+	const modal = new bootstrap.Modal(
+		document.getElementById("editDocInfoModal")
+	);
+	modal.show();
+}
+
+async function saveDocInfo() {
+	const newSlug = document.getElementById("editDocSlug").value;
+	const newTitle = document.getElementById("editDocTitle").value;
+	const newType = document.getElementById("editDocType").value;
+	const newBannerFile = document.getElementById("editDocBanner").files[0];
+
+	// If slug has changed, we need to update our storage
+	if (newSlug !== currentDoc.slug) {
+		await deleteDocumentFromDB(currentDoc.slug);
+		let docKeys = JSON.parse(localStorage.getItem("documentKeys") || "[]");
+		docKeys = docKeys.filter((key) => key !== currentDoc.slug);
+		docKeys.push(newSlug);
+		localStorage.setItem("documentKeys", JSON.stringify(docKeys));
+	}
+
+	currentDoc.slug = newSlug;
+	currentDoc.title = newTitle;
+	currentDoc.type = newType;
+
+	if (newBannerFile) {
+		const reader = new FileReader();
+		reader.onload = async function (e) {
+			currentDoc.banner = e.target.result;
+			currentDoc.thumbnailBase64 = e.target.result;
+			await saveDocumentToDB(currentDoc);
+			bootstrap.Modal.getInstance(
+				document.getElementById("editDocInfoModal")
+			).hide();
+			alert("Document info updated successfully!");
+		};
+		reader.readAsDataURL(newBannerFile);
+	} else {
+		await saveDocumentToDB(currentDoc);
+		bootstrap.Modal.getInstance(
+			document.getElementById("editDocInfoModal")
+		).hide();
+		alert("Document info updated successfully!");
+	}
+}
+
+async function deleteDocumentFromDB(slug) {
+	return new Promise((resolve, reject) => {
+		const transaction = db.transaction([STORE_NAME], "readwrite");
+		const objectStore = transaction.objectStore(STORE_NAME);
+		const request = objectStore.delete(slug);
+		request.onerror = (event) => reject("Delete error: " + event.target.error);
+		request.onsuccess = (event) => resolve();
+	});
+}
 window.addEventListener("load", async () => {
-    try {
-        await initDB();
-        initEditor();
-        await showInitialDialog();
-    } catch (error) {
-        console.error("Error initializing the application:", error);
-    }
+	try {
+		await initDB();
+		initEditor();
+		await showInitialDialog();
+	} catch (error) {
+		console.error("Error initializing the application:", error);
+	}
 });
 
 function initEditor() {
@@ -303,7 +381,7 @@ function initEditor() {
 			file: {
 				title: "File",
 				items:
-					"newdocument loadrecent restoredraft | preview | print | save export importjson | closedocument",
+					"newdocument loadrecent restoredraft | editdocinfo preview print | save export importjson | closedocument",
 			},
 		},
 		statusbar: false,
@@ -373,7 +451,7 @@ function initEditor() {
 			},
 		},
 		autosave_interval: "30s",
-		autosave_prefix: "tinymce-autosave-{path}{query}-{id}-",
+		autosave_prefix: "voyadores-autosave-{path}{query}-{id}-",
 		autosave_restore_when_empty: true,
 		autosave_retention: "1440m",
 		setup: function (ed) {
@@ -402,6 +480,10 @@ function initEditor() {
 			editor.ui.registry.addMenuItem("importjson", {
 				text: "Import from JSON",
 				onAction: importFromJson,
+			});
+			editor.ui.registry.addMenuItem("editdocinfo", {
+				text: "Edit Document Info",
+				onAction: showEditDocInfoModal,
 			});
 		},
 	});
