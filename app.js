@@ -63,7 +63,7 @@ function updateRecentDocumentsGrid(savedDocs) {
             const item = document.createElement("div");
             item.className = "document-item col-6 col-md-4";
             item.innerHTML = `
-                <img src="${doc.thumbnailBase64}" alt="${doc.title}" class="document-thumbnail">
+                <img src="${doc.thumbnailBase64}" alt="${doc.title}" class="document-thumbnail img-thumbnail">
                 <p class="mb-0">${doc.title}</p>
                 <p class="date-modified small mb-0">${formatRelativeTime(doc.dateModified)}</p>
             `;
