@@ -227,6 +227,47 @@ function exportToJson() {
 	}
 }
 
+function importFromJson() {
+	const fileInput = document.getElementById('jsonFileInput');
+	fileInput.click();
+
+	fileInput.onchange = function(event) {
+		const file = event.target.files[0];
+		if (file) {
+			const reader = new FileReader();
+			reader.onload = function(e) {
+				try {
+					const jsonContent = JSON.parse(e.target.result);
+					if (jsonContent.entries && jsonContent.entries.length > 0) {
+						const importedDoc = jsonContent.entries[0];
+						currentDoc = {
+							slug: importedDoc.slug || generateSlug(),
+							type: importedDoc.type || 'Imported',
+							title: importedDoc.title || 'Imported Document',
+							banner: importedDoc.banner || '',
+							content: importedDoc.content || '',
+							dateModified: new Date().toISOString()
+						};
+						editor.setContent(currentDoc.content);
+						saveDocumentToDB(currentDoc);
+						alert('Document imported successfully!');
+					} else {
+						throw new Error('Invalid JSON structure');
+					}
+				} catch (error) {
+					console.error('Error parsing JSON:', error);
+					alert('Error importing JSON. Please check the file format.');
+				}
+			};
+			reader.readAsText(file);
+		}
+	};
+}
+
+function generateSlug() {
+	return 'doc-' + Math.random().toString(36).substr(2, 9);
+}
+
 document.getElementById("newDocBtn").addEventListener("click", () => {
 	bootstrap.Modal.getInstance(document.getElementById("initialDialog")).hide();
 	showNewDocDialog();
@@ -257,12 +298,12 @@ function initEditor() {
 		plugins: "fullscreen code image link lists table",
 		toolbar:
 			"undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | image link table | fullscreen | code",
-		menubar: "file edit view insert format tools table",
+		menubar: "file edit view insert format tools",
 		menu: {
 			file: {
 				title: "File",
 				items:
-					"newdocument restoredraft | preview | print | save export | closedocument loadrecent",
+					"newdocument loadrecent restoredraft | preview | print | save export importjson | closedocument",
 			},
 		},
 		statusbar: false,
@@ -357,6 +398,10 @@ function initEditor() {
 			editor.ui.registry.addMenuItem("export", {
 				text: "Export to JSON",
 				onAction: exportToJson,
+			});
+			editor.ui.registry.addMenuItem("importjson", {
+				text: "Import from JSON",
+				onAction: importFromJson,
 			});
 		},
 	});
