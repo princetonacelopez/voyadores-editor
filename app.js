@@ -1,59 +1,106 @@
 let currentDoc = null;
 let editor = null;
-let autosaveInterval = null;
-let savedDocs = JSON.parse(localStorage.getItem("savedDocs")) || [];
-const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-initEditor();
-function showInitialDialog() {
-	const modal = new bootstrap.Modal(document.getElementById("initialDialog"));
-	updateRecentDocumentsGrid();
-	modal.show();
+const DB_NAME = "EditorDatabase";
+const STORE_NAME = "documents";
+let db;
+
+const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+// Initialize IndexedDB
+async function initDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onerror = (event) => reject("IndexedDB error: " + event.target.error);
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            resolve(db);
+        };
+        request.onupgradeneeded = (event) => {
+            db = event.target.result;
+            db.createObjectStore(STORE_NAME, { keyPath: "slug" });
+        };
+    });
 }
 
-function updateRecentDocumentsGrid() {
-	const grid = document.getElementById("recentDocumentsGrid");
-	if (savedDocs.length !== 0) {
-		grid.innerHTML = "";
-		savedDocs.forEach((doc, index) => {
-			const item = document.createElement("div");
-			item.className = "document-item col-6 col-md-4";
-			item.innerHTML = `
-                    <img src="${doc.thumbnailBase64}" alt="${doc.title}" class="img-thumbnail" height="130">
-                    <p class="mb-0">${doc.title}</p>
-                    <p class="date-modified small text-secondary mb-0">${formatRelativeTime(doc.dateModified)}</p>
-                `;
-			item.addEventListener("click", () => loadDocument(index));
-			grid.appendChild(item);
-		});
-	}
+// Load documents from IndexedDB
+async function loadDocuments() {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], "readonly");
+        const objectStore = transaction.objectStore(STORE_NAME);
+        const request = objectStore.getAll();
+        request.onerror = (event) => reject("Load error: " + event.target.error);
+        request.onsuccess = (event) => resolve(event.target.result);
+    });
+}
+
+// Save document to IndexedDB
+async function saveDocumentToDB(doc) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], "readwrite");
+        const objectStore = transaction.objectStore(STORE_NAME);
+        const request = objectStore.put(doc);
+        request.onerror = (event) => reject("Save error: " + event.target.error);
+        request.onsuccess = (event) => resolve(event.target.result);
+    });
+}
+
+async function showInitialDialog() {
+    try {
+        const savedDocs = await loadDocuments();
+        updateRecentDocumentsGrid(savedDocs);
+        const modal = new bootstrap.Modal(document.getElementById("initialDialog"));
+        modal.show();
+    } catch (error) {
+        console.error("Error loading documents:", error);
+    }
+}
+
+function updateRecentDocumentsGrid(savedDocs) {
+    const grid = document.getElementById("recentDocumentsGrid");
+    grid.innerHTML = "";
+    if (savedDocs && savedDocs.length > 0) {
+        savedDocs.forEach((doc) => {
+            const item = document.createElement("div");
+            item.className = "document-item col-6 col-md-4";
+            item.innerHTML = `
+                <img src="${doc.thumbnailBase64}" alt="${doc.title}" class="document-thumbnail">
+                <p class="mb-0">${doc.title}</p>
+                <p class="date-modified small mb-0">${formatRelativeTime(doc.dateModified)}</p>
+            `;
+            item.addEventListener("click", () => loadDocument(doc));
+            grid.appendChild(item);
+        });
+    } else {
+        grid.innerHTML = `<div class="col-6 col-md-4 card document-thumbnail bg-secondary-subtle px-0"><p class="m-auto">No recent documents found.</p></div>`;
+    }
 }
 
 function formatRelativeTime(dateString) {
 	const date = new Date(dateString);
 	const now = new Date();
-	
+
 	// Check if the date is valid
 	if (isNaN(date.getTime())) {
-		console.error('Invalid date:', dateString);
-		return 'Invalid date';
+		console.error("Invalid date:", dateString);
+		return "Invalid date";
 	}
 
 	const diffInSeconds = Math.floor((now - date) / 1000);
 
 	// Ensure the difference is a finite number
 	if (!Number.isFinite(diffInSeconds)) {
-		console.error('Invalid time difference:', diffInSeconds);
-		return 'Unknown time ago';
+		console.error("Invalid time difference:", diffInSeconds);
+		return "Unknown time ago";
 	}
 
 	if (diffInSeconds < 60) {
-		return rtf.format(-Math.min(diffInSeconds, 59), 'second');
+		return rtf.format(-Math.min(diffInSeconds, 59), "second");
 	} else if (diffInSeconds < 3600) {
-		return rtf.format(-Math.min(Math.floor(diffInSeconds / 60), 59), 'minute');
+		return rtf.format(-Math.min(Math.floor(diffInSeconds / 60), 59), "minute");
 	} else if (diffInSeconds < 86400) {
-		return rtf.format(-Math.min(Math.floor(diffInSeconds / 3600), 23), 'hour');
+		return rtf.format(-Math.min(Math.floor(diffInSeconds / 3600), 23), "hour");
 	} else {
-		return rtf.format(-Math.min(Math.floor(diffInSeconds / 86400), 30), 'day');
+		return rtf.format(-Math.min(Math.floor(diffInSeconds / 86400), 30), "day");
 	}
 }
 
@@ -63,76 +110,56 @@ function showNewDocDialog() {
 }
 
 function createNewDocument(event) {
-    event.preventDefault();
-    const slug = document.getElementById('docSlug').value;
-    const title = document.getElementById('docTitle').value;
-    const type = document.getElementById('docType').value;
-    const bannerFile = document.getElementById('docBanner').files[0];
+	event.preventDefault();
+	const slug = document.getElementById("docSlug").value;
+	const title = document.getElementById("docTitle").value;
+	const type = document.getElementById("docType").value;
+	const bannerFile = document.getElementById("docBanner").files[0];
 
-    // Create the banner path using the file name
-    const bannerPath = `/Content/images/social-post/${bannerFile.name}`;
+	// Create the banner path using the file name
+	const bannerPath = `/Content/images/social-post/${bannerFile.name}`;
 
-    // Create base64 thumbnail
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        currentDoc = {
-            slug: slug,
-            type: type,
-            title: title,
-            banner: bannerPath,
-            thumbnailBase64: e.target.result,
-            dateModified: new Date().toISOString(),
-            content: ""
-        };
+	// Create base64 thumbnail
+	const reader = new FileReader();
+	reader.onload = function (e) {
+		currentDoc = {
+			slug: slug,
+			type: type,
+			title: title,
+			banner: bannerPath,
+			thumbnailBase64: e.target.result,
+			dateModified: new Date().toISOString(),
+			content: "",
+		};
 
-        bootstrap.Modal.getInstance(document.getElementById('newDocDialog')).hide();
-        initEditor();
+		bootstrap.Modal.getInstance(document.getElementById("newDocDialog")).hide();
+		initEditor();
 
-        // In a real-world scenario, you would upload the file to the server here
-        console.log(`File ${bannerFile.name} would be uploaded to ${bannerPath}`);
-    };
-    reader.readAsDataURL(bannerFile);
+		// In a real-world scenario, you would upload the file to the server here
+		console.log(`File ${bannerFile.name} would be uploaded to ${bannerPath}`);
+	};
+	reader.readAsDataURL(bannerFile);
 }
 
-
-function loadDocument(index) {
-	if (index >= 0 && index < savedDocs.length) {
-		currentDoc = savedDocs[index];
-		if (editor) {
-			editor.setContent(currentDoc.content);
-			startAutosave();
-		} else {
-			initEditor();
-		}
-		bootstrap.Modal.getInstance(document.getElementById('initialDialog')).hide();
+function loadDocument(doc) {
+	currentDoc = doc;
+	if (editor) {
+		editor.setContent(currentDoc.content);
+	} else {
+		initEditor();
 	}
+	bootstrap.Modal.getInstance(document.getElementById("initialDialog")).hide();
 }
 
-function loadMostRecentDocument() {
+async function loadMostRecentDocument() {
+	const savedDocs = await loadDocuments();
 	if (savedDocs.length > 0) {
-		savedDocs.sort((a, b) => new Date(b.dateModified) - new Date(a.dateModified));
-		currentDoc = savedDocs[0];
-		if (editor) {
-			editor.setContent(currentDoc.content);
-		} else {
-			initEditor();
-		}
+		savedDocs.sort(
+			(a, b) => new Date(b.dateModified) - new Date(a.dateModified)
+		);
+		loadDocument(savedDocs[0]);
 	} else {
 		alert("No recent documents found. Please create a new document.");
-	}
-}
-
-function startAutosave() {
-	if (autosaveInterval) {
-		clearInterval(autosaveInterval);
-	}
-	autosaveInterval = setInterval(autosaveDocument, 30000); // Autosave every 30 seconds
-}
-
-function stopAutosave() {
-	if (autosaveInterval) {
-		clearInterval(autosaveInterval);
-		autosaveInterval = null;
 	}
 }
 
@@ -140,28 +167,32 @@ function autosaveDocument() {
 	if (currentDoc && editor) {
 		currentDoc.content = editor.getContent();
 		currentDoc.dateModified = new Date().toISOString();
-		const existingIndex = savedDocs.findIndex(doc => doc.slug === currentDoc.slug);
+		const existingIndex = savedDocs.findIndex(
+			(doc) => doc.slug === currentDoc.slug
+		);
 		if (existingIndex !== -1) {
 			savedDocs[existingIndex] = currentDoc;
 		} else {
 			savedDocs.push(currentDoc);
 		}
-		localStorage.setItem('savedDocs', JSON.stringify(savedDocs));
+		localStorage.setItem("savedDocs", JSON.stringify(savedDocs));
 		console.log("Document autosaved at", new Date().toLocaleTimeString());
 	}
 }
 
-function saveDocument() {
+function closeDocument() {
+	if (editor) {
+		editor.setContent("");
+		currentDoc = null;
+		showInitialDialog();
+	}
+}
+
+async function saveDocument() {
 	if (currentDoc && editor) {
 		currentDoc.content = editor.getContent();
 		currentDoc.dateModified = new Date().toISOString();
-		const existingIndex = savedDocs.findIndex(doc => doc.slug === currentDoc.slug);
-		if (existingIndex !== -1) {
-			savedDocs[existingIndex] = currentDoc;
-		} else {
-			savedDocs.push(currentDoc);
-		}
-		localStorage.setItem('savedDocs', JSON.stringify(savedDocs));
+		await saveDocumentToDB(currentDoc);
 		alert("Document saved successfully!");
 	}
 }
@@ -169,25 +200,16 @@ function saveDocument() {
 function exportToJson() {
 	if (currentDoc && editor) {
 		currentDoc.content = editor.getContent();
-		const exportDoc = {...currentDoc};
-		delete exportDoc.thumbnailBase64;  // Remove the base64 thumbnail from the export
+		const exportDoc = { ...currentDoc };
+		delete exportDoc.thumbnailBase64; // Remove the base64 thumbnail from the export
 		const jsonContent = JSON.stringify({ entries: [exportDoc] }, null, 2);
-		const blob = new Blob([jsonContent], { type: 'application/json' });
+		const blob = new Blob([jsonContent], { type: "application/json" });
 		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
+		const a = document.createElement("a");
 		a.href = url;
 		a.download = `${currentDoc.slug}.json`;
 		a.click();
 		URL.revokeObjectURL(url);
-	}
-}
-
-function closeDocument() {
-	if (editor) {
-		stopAutosave();
-		editor.setContent('');
-		currentDoc = null;
-		showInitialDialog();
 	}
 }
 
@@ -200,23 +222,34 @@ document
 	.getElementById("newDocForm")
 	.addEventListener("submit", createNewDocument);
 
-// Show initial dialog when the page loads
-window.addEventListener("load", showInitialDialog);
+window.addEventListener("load", async () => {
+    try {
+        await initDB();
+        initEditor();
+        await showInitialDialog();
+    } catch (error) {
+        console.error("Error initializing the application:", error);
+    }
+});
 
 function initEditor() {
 	if (editor) {
-		editor.setContent(currentDoc ? currentDoc.content : '');
-		document.getElementById("editor-container").classList.remove("d-none");
+		editor.setContent(currentDoc ? currentDoc.content : "");
 		return;
 	}
 
 	tinymce.init({
 		selector: "#editor-container",
 		plugins: "fullscreen code image link lists table",
-		toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | image link table | fullscreen | code',
+		toolbar:
+			"undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | image link table | fullscreen | code",
 		menubar: "file edit view insert format tools table",
 		menu: {
-			file: { title: 'File', items: 'newdocument restoredraft | preview | print | save export | closedocument loadrecent' }
+			file: {
+				title: "File",
+				items:
+					"newdocument restoredraft | preview | print | save export | closedocument loadrecent",
+			},
 		},
 		statusbar: false,
 		height: "100vh",
@@ -284,33 +317,32 @@ function initEditor() {
 				classes: "img-fluid",
 			},
 		},
-		autosave_interval: '30s',
-                autosave_prefix: 'tinymce-autosave-{path}{query}-{id}-',
-                autosave_restore_when_empty: true,
-                autosave_retention: '1440m',
+		autosave_interval: "30s",
+		autosave_prefix: "tinymce-autosave-{path}{query}-{id}-",
+		autosave_restore_when_empty: true,
+		autosave_retention: "1440m",
 		setup: function (ed) {
 			editor = ed;
-			editor.on('init', function () {
+			editor.on("init", function () {
 				if (currentDoc) {
 					editor.setContent(currentDoc.content);
 				}
-				startAutosave();
 			});
-			editor.ui.registry.addMenuItem('closedocument', {
-				text: 'Close Document',
-				onAction: closeDocument
+			editor.ui.registry.addMenuItem("closedocument", {
+				text: "Close Document",
+				onAction: closeDocument,
 			});
-			editor.ui.registry.addMenuItem('loadrecent', {
-				text: 'Load Recent Document',
-				onAction: loadMostRecentDocument
+			editor.ui.registry.addMenuItem("loadrecent", {
+				text: "Load Recent Document",
+				onAction: loadMostRecentDocument,
 			});
-			editor.ui.registry.addMenuItem('save', {
-				text: 'Save',
-				onAction: saveDocument
+			editor.ui.registry.addMenuItem("save", {
+				text: "Save",
+				onAction: saveDocument,
 			});
-			editor.ui.registry.addMenuItem('export', {
-				text: 'Export to JSON',
-				onAction: exportToJson
+			editor.ui.registry.addMenuItem("export", {
+				text: "Export to JSON",
+				onAction: exportToJson,
 			});
 		},
 	});
