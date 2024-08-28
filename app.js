@@ -24,13 +24,21 @@ async function initDB() {
 
 // Load documents from IndexedDB
 async function loadDocuments() {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([STORE_NAME], "readonly");
-        const objectStore = transaction.objectStore(STORE_NAME);
-        const request = objectStore.getAll();
-        request.onerror = (event) => reject("Load error: " + event.target.error);
-        request.onsuccess = (event) => resolve(event.target.result);
-    });
+	const docKeys = JSON.parse(localStorage.getItem('documentKeys') || '[]');
+	const docs = [];
+
+	for (const key of docKeys) {
+		const doc = await new Promise((resolve, reject) => {
+			const transaction = db.transaction([STORE_NAME], "readonly");
+			const objectStore = transaction.objectStore(STORE_NAME);
+			const request = objectStore.get(key);
+			request.onerror = (event) => reject("Load error: " + event.target.error);
+			request.onsuccess = (event) => resolve(event.target.result);
+		});
+		if (doc) docs.push(doc);
+	}
+
+	return docs;
 }
 
 // Save document to IndexedDB
@@ -39,6 +47,12 @@ async function saveDocumentToDB(doc) {
         const transaction = db.transaction([STORE_NAME], "readwrite");
         const objectStore = transaction.objectStore(STORE_NAME);
         const request = objectStore.put(doc);
+		// Update localStorage with the document key
+		let docKeys = JSON.parse(localStorage.getItem('documentKeys') || '[]');
+		if (!docKeys.includes(doc.slug)) {
+			docKeys.push(doc.slug);
+			localStorage.setItem('documentKeys', JSON.stringify(docKeys));
+		}
         request.onerror = (event) => reject("Save error: " + event.target.error);
         request.onsuccess = (event) => resolve(event.target.result);
     });
