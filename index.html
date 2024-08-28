@@ -64,22 +64,22 @@
                     <div class="modal-body">
                         <form id="newDocForm">
                             <div class="mb-3">
-                                <label for="docSlug" class="form-label">Slug</label>
-                                <input type="text" class="form-control" id="docSlug" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="docTitle" class="form-label">Title</label>
+                                <label for="docTitle" class="form-label">Title<span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="docTitle" required>
                             </div>
                             <div class="mb-3">
-                                <label for="docType" class="form-label">Type</label>
+                                <label for="docType" class="form-label">Type<span class="text-danger">*</span></label>
                                 <select class="form-select" id="docType" required>
                                     <option value="Promo">Promo</option>
                                     <option value="Campaign">Campaign</option>
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label for="docBanner" class="form-label">Banner Image</label>
+                                <label for="docSlug" class="form-label">Slug<span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="docSlug" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="docBanner" class="form-label">Banner Image<span class="text-danger">*</span></label>
                                 <input type="file" class="form-control" id="docBanner" accept="image/*" required>
                             </div>
                             <div class="hstack justify-content-end mt-5">
