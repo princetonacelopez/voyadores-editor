@@ -292,14 +292,6 @@ function showEditDocInfoModal() {
 	document.getElementById("editDocTitle").value = currentDoc.title;
 	document.getElementById("editDocType").value = currentDoc.type;
 
-	const currentBanner = document.getElementById("currentBanner");
-	if (currentDoc.banner) {
-		currentBanner.src = currentDoc.banner;
-		currentBanner.style.display = "block";
-	} else {
-		currentBanner.style.display = "none";
-	}
-
 	const modal = new bootstrap.Modal(
 		document.getElementById("editDocInfoModal")
 	);
